@@ -1,0 +1,2 @@
+APP_URL= https://github.com/zakyyusuf11/strory-app-zaky
+MAP_SERVICE_API_KEY= https://story-api.dicoding.dev/v1
