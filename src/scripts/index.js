@@ -21,16 +21,33 @@ if ('serviceWorker' in navigator) {
       const reg = await withTimeout(navigator.serviceWorker.register('/sw.js'), 7000);
       console.log('ServiceWorker registered:', reg);
 
-      // Optional: init push (non-blocking)
-      if ('PushManager' in window) {
-        import('./push-notification.js')
-          .then((module) => {
-            if (module && typeof module.initPush === 'function') {
-              try { module.initPush(reg); } catch (e) { console.warn('initPush failed', e); }
+      // Init push notification (tombol akan muncul terus)
+      import('./push-notification.js')
+        .then((module) => {
+          console.log('✅ Push notification module loaded');
+          if (module && typeof module.initPush === 'function') {
+            try { 
+              module.initPush(reg);
+              console.log('✅ Push notification initialized with registration');
+            } catch (e) { 
+              console.warn('⚠️ initPush failed, retrying without registration:', e);
+              // Tetap coba init tanpa registration
+              try { 
+                module.initPush(null);
+                console.log('✅ Push notification initialized without registration');
+              } catch (e2) { 
+                console.warn('❌ initPush retry failed:', e2);
+              }
             }
-          })
-          .catch((err) => console.warn('Could not load push-notification module:', err));
-      }
+          }
+        })
+        .catch((err) => {
+          console.warn('⚠️ Could not load push-notification module:', err);
+          // Tetap coba load untuk membuat tombol
+          import('./push-notification.js').catch((e) => {
+            console.error('❌ Failed to load push notification module:', e);
+          });
+        });
 
       // Don't aggressively unregister other registrations here.
       // If you still want to clean stray registrations, do it manually from DevTools

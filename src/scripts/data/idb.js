@@ -1,7 +1,7 @@
 // src/scripts/data/idb.js
 // Database configuration
 const DB_NAME = 'StoryAppDB';
-const DB_VERSION = 2; // Increment untuk memastikan favorites store dibuat
+const DB_VERSION = 3; // Increment untuk memastikan semua store (termasuk outbox) dibuat
 
 // Store names
 const STORE_FAVORITES = 'favorites';
@@ -56,9 +56,13 @@ export async function openDB() {
         }
       }
 
-      // Store untuk outbox (sinkronisasi background)
+      // Store untuk outbox (sinkronisasi background) - ditambahkan di version 2
       if (!db.objectStoreNames.contains(STORE_OUTBOX)) {
-        db.createObjectStore(STORE_OUTBOX, { autoIncrement: true });
+        const outboxStore = db.createObjectStore(STORE_OUTBOX, { 
+          keyPath: 'id', 
+          autoIncrement: true 
+        });
+        outboxStore.createIndex('timestamp', 'timestamp', { unique: false });
       }
     };
   });
@@ -431,16 +435,26 @@ export async function addToOutbox(payload) {
 export async function getOutboxAll() {
   try {
     const db = await openDB();
+    
+    // Pastikan store outbox ada
+    if (!db.objectStoreNames.contains(STORE_OUTBOX)) {
+      console.warn('[idb] Outbox store tidak tersedia');
+      return [];
+    }
+    
     const tx = db.transaction(STORE_OUTBOX, 'readonly');
     const store = tx.objectStore(STORE_OUTBOX);
 
     return new Promise((resolve, reject) => {
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        console.error('[idb] Error getting outbox:', request.error);
+        resolve([]); // Return empty array instead of rejecting
+      };
     });
   } catch (err) {
-    console.error('Error getting outbox:', err);
+    console.error('[idb] Error getting outbox:', err);
     return [];
   }
 }
@@ -452,16 +466,26 @@ export async function getOutboxAll() {
 export async function clearOutbox() {
   try {
     const db = await openDB();
+    
+    // Pastikan store outbox ada
+    if (!db.objectStoreNames.contains(STORE_OUTBOX)) {
+      console.warn('[idb] Outbox store tidak tersedia untuk clear');
+      return;
+    }
+    
     const tx = db.transaction(STORE_OUTBOX, 'readwrite');
     const store = tx.objectStore(STORE_OUTBOX);
 
     return new Promise((resolve, reject) => {
       const request = store.clear();
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        console.error('[idb] Error clearing outbox:', request.error);
+        resolve(); // Resolve instead of reject untuk tidak crash app
+      };
     });
   } catch (err) {
-    console.error('Error clearing outbox:', err);
-    throw err;
+    console.error('[idb] Error clearing outbox:', err);
+    // Jangan throw error, biarkan app tetap berjalan
   }
 }
