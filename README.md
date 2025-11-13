@@ -1,6 +1,16 @@
-# App Starter Project with Webpack
+# Story App
 
-Proyek ini adalah setup dasar untuk aplikasi web yang menggunakan webpack untuk proses bundling, Babel untuk transpile JavaScript, serta mendukung proses build dan serving aplikasi.
+Aplikasi web untuk berbagi cerita dengan dukungan PWA, Push Notification, dan IndexedDB.
+
+## Fitur
+
+- ✅ Single Page Application (SPA) dengan transisi halaman
+- ✅ Menampilkan data dan marker pada peta
+- ✅ Fitur tambah data baru
+- ✅ Aksesibilitas sesuai standar
+- ✅ Push Notification
+- ✅ PWA dengan dukungan instalasi dan mode offline
+- ✅ IndexedDB untuk penyimpanan lokal (Create, Read, Delete)
 
 ## Table of Contents
 
@@ -17,9 +27,13 @@ Proyek ini adalah setup dasar untuk aplikasi web yang menggunakan webpack untuk 
 
 ### Installation
 
-1. Download starter project [di sini](https://raw.githubusercontent.com/dicodingacademy/a219-web-intermediate-labs/099-shared-files/starter-project-with-webpack.zip).
-2. Lakukan unzip file.
-3. Pasang seluruh dependencies dengan perintah berikut.
+1. Clone repository ini
+   ```shell
+   git clone https://github.com/zakyyusuf11/Story-app.git
+   cd Story-app
+   ```
+
+2. Pasang seluruh dependencies dengan perintah berikut.
    ```shell
    npm install
    ```
@@ -36,7 +50,7 @@ Proyek ini adalah setup dasar untuk aplikasi web yang menggunakan webpack untuk 
   ```shell
   npm run start-dev
   ```
-  Script ini menjalankan server pengembangan webpack dengan fitur live reload dan mode development sesuai konfigurasi di`webpack.dev.js`.
+  Script ini menjalankan server pengembangan webpack dengan fitur live reload dan mode development sesuai konfigurasi di `webpack.dev.js`.
 
 - Serve:
   ```shell
@@ -46,23 +60,45 @@ Proyek ini adalah setup dasar untuk aplikasi web yang menggunakan webpack untuk 
 
 ## Project Structure
 
-Proyek starter ini dirancang agar kode tetap modular dan terorganisir.
+Proyek ini dirancang agar kode tetap modular dan terorganisir.
 
 ```text
-starter-project/
+Story-app/
 ├── dist/                   # Compiled files for production
 ├── src/                    # Source project files
-│   ├── public/             # Public files
+│   ├── public/             # Public files (service worker, images, favicon)
+│   │   ├── sw.js          # Service Worker untuk PWA
+│   │   ├── images/        # Image assets
+│   │   └── favicon.png    # Favicon
 │   ├── scripts/            # Source JavaScript files
-│   │   └── index.js        # Main JavaScript entry file
+│   │   ├── data/          # Data layer (API, IndexedDB)
+│   │   ├── pages/         # Page components
+│   │   ├── routes/        # Routing logic
+│   │   ├── utils/         # Utility functions
+│   │   ├── push-notification.js  # Push notification handler
+│   │   └── index.js       # Main JavaScript entry file
 │   ├── styles/             # Source CSS files
 │   │   └── styles.css      # Main CSS file
-│   └── index.html/         # Main HTML file
+│   └── index.html          # Main HTML file
+├── manifest.json           # PWA manifest
 ├── package.json            # Project metadata and dependencies
-├── package-lock.json       # Project metadata and dependencies
+├── package-lock.json       # Locked dependencies
 ├── README.md               # Project documentation
 ├── STUDENT.txt             # Student information
 ├── webpack.common.js       # Webpack common configuration
 ├── webpack.dev.js          # Webpack development configuration
 └── webpack.prod.js         # Webpack production configuration
 ```
+
+## Teknologi yang Digunakan
+
+- Webpack - Module bundler
+- Babel - JavaScript transpiler
+- Service Worker - PWA dan offline support
+- IndexedDB - Local storage
+- Push API - Push notifications
+- Leaflet - Maps integration
+
+## Author
+
+Zaky Yusuf Ajindra
