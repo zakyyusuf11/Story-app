@@ -130,10 +130,21 @@ export async function initPush(registration) {
     toggle = document.createElement('button');
     toggle.id = 'push-toggle';
     toggle.setAttribute('type', 'button');
+    toggle.className = 'btn push-notification-btn';
     toggle.style.position = 'fixed';
-    toggle.style.left = '8px';
-    toggle.style.bottom = '8px';
+    toggle.style.right = '16px';
+    toggle.style.bottom = '16px';
     toggle.style.zIndex = '9999';
+    toggle.style.padding = '12px 20px';
+    toggle.style.backgroundColor = '#4CAF50';
+    toggle.style.color = 'white';
+    toggle.style.border = 'none';
+    toggle.style.borderRadius = '8px';
+    toggle.style.cursor = 'pointer';
+    toggle.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    toggle.style.fontSize = '14px';
+    toggle.style.fontWeight = '600';
+    toggle.setAttribute('aria-label', 'Toggle Push Notifications');
     document.body.appendChild(toggle);
   }
 
@@ -142,13 +153,16 @@ export async function initPush(registration) {
     try {
       const sub = await registration.pushManager.getSubscription();
       if (Notification.permission === 'granted' && sub) {
-        toggle.textContent = 'Disable Notifications';
+        toggle.textContent = '🔔 Notifikasi Aktif';
+        toggle.style.backgroundColor = '#4CAF50';
       } else {
-        toggle.textContent = 'Enable Notifications';
+        toggle.textContent = '🔔 Aktifkan Notifikasi';
+        toggle.style.backgroundColor = '#2196F3';
       }
     } catch (err) {
       console.error('Error while updating push UI', err);
-      toggle.textContent = 'Enable Notifications';
+      toggle.textContent = '🔔 Aktifkan Notifikasi';
+      toggle.style.backgroundColor = '#2196F3';
     }
   }
 
