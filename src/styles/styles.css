@@ -1,0 +1,386 @@
+/* =========================================================
+   Theme: Green Learning Story App
+   Author: Zaky Yusuf
+   Description: Clean, responsive, green-themed UI
+   ========================================================= */
+
+/* ------------------ Fonts ------------------ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+/* ------------------ Root Variables ------------------ */
+:root {
+  --bg: #f9fdf9;
+  --card: #ffffff;
+  --text: #1b1b1b;
+  --muted: #6b6b6b;
+  --primary: #2e7d32;    /* dark green */
+  --primary-2: #4caf50;  /* medium green */
+  --accent: #81c784;     /* light green */
+  --danger: #e53935;
+  --shadow: 0 6px 18px rgba(34, 34, 34, 0.08);
+  --radius: 12px;
+}
+
+/* ------------------ Base & Reset ------------------ */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.45;
+}
+
+/* ------------------ Header ------------------ */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-2));
+  color: #fff;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo img {
+  height: 36px;
+  width: auto;
+}
+
+.site-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.2px;
+}
+
+/* Navigation */
+.nav-list {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.nav-list a {
+  color: rgba(255, 255, 255, 0.95);
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.nav-list a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+/* ------------------ Auth ------------------ */
+.auth-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-welcome {
+  font-size: 0.95rem;
+  margin-right: 6px;
+}
+
+/* Buttons */
+.btn {
+  background: var(--primary-2);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.btn:hover {
+  background: var(--accent);
+}
+
+.btn.small {
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  border-radius: 6px;
+}
+
+.btn.secondary {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.btn.danger {
+  background: var(--danger);
+}
+
+/* ------------------ Layout ------------------ */
+.container {
+  max-width: 1100px;
+  margin: 18px auto;
+  padding: 18px;
+}
+
+.main-content {
+  min-height: 60vh;
+  padding-bottom: 40px;
+}
+
+/* ------------------ Story Cards ------------------ */
+.stories-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.story-item {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  transition: transform 0.2s ease;
+}
+
+.story-item:hover {
+  transform: translateY(-2px);
+}
+
+.story-item img {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.story-meta h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.story-meta .desc {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.story-meta .time {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ------------------ Map Layout ------------------ */
+.map-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.map-list {
+  background: var(--card);
+  padding: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-height: 500px;
+  overflow: auto;
+}
+
+.map-story-item {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.map-story-item:focus {
+  outline: 3px solid rgba(76, 175, 80, 0.25);
+}
+
+/* ------------------ Forms ------------------ */
+.form-group {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+input[type="file"] {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ------------------ Specific Pages ------------------ */
+.add-story-page,
+.login-page,
+.add-story-section {
+  max-width: 920px;
+  margin: 12px auto;
+  background: var(--card);
+  padding: 18px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ------------------ Camera ------------------ */
+#camera-video {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+#camera-canvas {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+/* ------------------ Accessibility ------------------ */
+.skip-to-content {
+  position: absolute;
+  left: -999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.skip-to-content:focus {
+  left: 10px;
+  top: 10px;
+  background: var(--primary);
+  color: #fff;
+  padding: 8px;
+  border-radius: 6px;
+  z-index: 9999;
+}
+
+a:focus,
+button:focus,
+input:focus,
+textarea:focus {
+  outline: 3px solid rgba(76, 175, 80, 0.18);
+  outline-offset: 2px;
+}
+
+/* ------------------ Transitions ------------------ */
+.fade-in {
+  animation: fadeIn 0.28s ease-in;
+}
+
+.fade-out {
+  opacity: 0.01;
+  transition: opacity 0.18s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------ Responsive ------------------ */
+@media (max-width: 1024px) {
+  .stories-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .map-layout {
+    grid-template-columns: 1fr 0.9fr;
+  }
+
+  .container {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  header {
+    padding: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stories-list {
+    grid-template-columns: 1fr;
+  }
+
+  .map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .container {
+    padding: 12px;
+  }
+
+  .logo img {
+    height: 30px;
+  }
+}
+
+@media (max-width: 420px) {
+  .story-item img {
+    width: 84px;
+    height: 84px;
+  }
+
+  .site-title {
+    font-size: 1rem;
+  }
+}
+
+/* ------------------ Helpers ------------------ */
+.form-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.message {
+  margin-top: 10px;
+  color: var(--muted);
+}
