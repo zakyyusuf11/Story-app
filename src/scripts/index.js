@@ -13,12 +13,35 @@ function withTimeout(promise, ms = 8000) {
   ]);
 }
 
+// Fungsi untuk mendapatkan base path (untuk GitHub Pages)
+function getBasePath() {
+  // Jika di GitHub Pages, path akan seperti /repo-name/
+  const path = window.location.pathname;
+  // Hapus trailing slash dan ambil base path
+  const pathParts = path.split('/').filter(p => p && p !== 'index.html' && p !== '');
+  // Jika ada base path (misal: /Story-app/), return itu
+  // Cek apakah ini GitHub Pages (bukan root domain)
+  if (pathParts.length > 0) {
+    const repoName = pathParts[0];
+    // Jika path mengandung repo name yang bukan hanya index.html
+    if (repoName && repoName !== 'index.html' && !repoName.includes('.')) {
+      return '/' + repoName;
+    }
+  }
+  return '';
+}
+
 // Registrasi Service Worker (safely) & inisialisasi Push (di-load saat window 'load')
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
-      // Daftarkan SW di root /sw.js, tapi batasi waktu tunggu
-      const reg = await withTimeout(navigator.serviceWorker.register('/sw.js'), 7000);
+      // Dapatkan base path untuk GitHub Pages
+      const basePath = getBasePath();
+      const swPath = basePath ? `${basePath}/sw.js` : '/sw.js';
+      console.log('Registering service worker at:', swPath, '(basePath:', basePath, ')');
+      
+      // Daftarkan SW dengan base path yang benar, tapi batasi waktu tunggu
+      const reg = await withTimeout(navigator.serviceWorker.register(swPath), 7000);
       console.log('ServiceWorker registered:', reg);
 
       // Init push notification (tombol akan muncul terus)
