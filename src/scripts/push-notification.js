@@ -518,10 +518,24 @@ export async function initPush(registration) {
   
   await updateUI();
   
+  // Pastikan tombol terlihat
+  toggle.style.display = 'block';
+  toggle.style.visibility = 'visible';
+  toggle.style.opacity = '1';
+  
   // Hapus event listener lama jika ada, lalu tambahkan yang baru
   const newToggle = toggle.cloneNode(true);
-  toggle.parentNode.replaceChild(newToggle, toggle);
+  if (toggle.parentNode) {
+    toggle.parentNode.replaceChild(newToggle, toggle);
+  }
   const finalToggle = document.getElementById('push-toggle');
+  
+  // Pastikan finalToggle juga terlihat
+  if (finalToggle) {
+    finalToggle.style.display = 'block';
+    finalToggle.style.visibility = 'visible';
+    finalToggle.style.opacity = '1';
+  }
   
   finalToggle.addEventListener('click', async () => {
     try {
@@ -716,33 +730,53 @@ function initPushButton() {
   }
 }
 
-// Panggil segera saat module di-load
+// Panggil segera saat module di-load - BUAT TOMBOL SEGERA
 if (typeof document !== 'undefined') {
+  // Coba buat tombol segera tanpa menunggu
+  const tryCreateButton = () => {
+    if (!document.getElementById('push-toggle')) {
+      createPushButton();
+    }
+  };
+  
   // Coba buat tombol segera
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(() => initPushButton(), 0);
+  if (document.body) {
+    tryCreateButton();
+  } else if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(tryCreateButton, 0);
   } else {
-    document.addEventListener('DOMContentLoaded', () => {
-      initPushButton();
-    });
+    document.addEventListener('DOMContentLoaded', tryCreateButton);
   }
   
   // Juga panggil saat window load untuk memastikan
   window.addEventListener('load', () => {
-    // Pastikan tombol ada
-    if (!document.getElementById('push-toggle')) {
+    // Pastikan tombol ada dan terlihat
+    const btn = document.getElementById('push-toggle');
+    if (!btn) {
       console.log('⚠️ Push button not found on load, creating now...');
       createPushButton();
     } else {
       console.log('✅ Push button already exists');
+      // Pastikan tombol terlihat
+      btn.style.display = 'block';
+      btn.style.visibility = 'visible';
+      btn.style.opacity = '1';
     }
   });
   
-  // Fallback: coba lagi setelah 2 detik
-  setTimeout(() => {
-    if (!document.getElementById('push-toggle')) {
-      console.log('⚠️ Push button still not found after 2s, creating now...');
-      createPushButton();
-    }
-  }, 2000);
+  // Fallback: coba lagi setelah 1 detik, 2 detik, dan 3 detik
+  [1000, 2000, 3000].forEach(delay => {
+    setTimeout(() => {
+      const btn = document.getElementById('push-toggle');
+      if (!btn) {
+        console.log(`⚠️ Push button still not found after ${delay}ms, creating now...`);
+        createPushButton();
+      } else {
+        // Pastikan tombol terlihat
+        btn.style.display = 'block';
+        btn.style.visibility = 'visible';
+        btn.style.opacity = '1';
+      }
+    }, delay);
+  });
 }

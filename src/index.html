@@ -8,7 +8,7 @@
      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" crossorigin=""/>
 
      <link rel="icon" href="./public/favicon.png">
-     <link rel="manifest" href="/manifest.json" />
+     <link rel="manifest" href="./manifest.json" />
 <meta name="theme-color" content="#2b3748" />
 
 
@@ -17,7 +17,7 @@
   <body>
     <header>
       <div class="logo">
-        <img src="./public/images/logo.png" alt="Logo" style="max-width: 50px; height: auto;" />
+        <img id="logo-img" src="./public/images/logo.png" alt="Logo" style="max-width: 50px; height: auto;" onerror="this.onerror=null; this.src='./images/logo.png';" />
         <div class="site-title">Story App</div>
       </div>
 

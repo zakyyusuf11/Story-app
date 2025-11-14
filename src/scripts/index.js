@@ -5,6 +5,22 @@ import UrlParser from './routes/url-parser.js';
 import { getOutboxAll, clearOutbox } from './data/idb.js'; // pastikan file ini ada
 import { postStory } from './data/api.js'; // fungsi untuk POST story ke API (sesuaikan)
 
+// Fix logo path untuk GitHub Pages
+function fixLogoPath() {
+  const logoImg = document.getElementById('logo-img');
+  if (logoImg) {
+    const basePath = getBasePath();
+    if (basePath) {
+      // Jika di GitHub Pages, gunakan path dengan base path
+      logoImg.src = basePath + '/images/logo.png';
+      console.log('✅ Logo path fixed to:', logoImg.src);
+    } else {
+      // Fallback ke path relatif
+      logoImg.src = './images/logo.png';
+    }
+  }
+}
+
 // Utility: try an async op with timeout
 function withTimeout(promise, ms = 8000) {
   return Promise.race([
@@ -194,7 +210,17 @@ window.addEventListener('hashchange', () => {
 
 // Register event listeners untuk navigasi SPA
 window.addEventListener('hashchange', renderPage);
-window.addEventListener('load', renderPage);
+window.addEventListener('load', () => {
+  renderPage();
+  fixLogoPath(); // Fix logo path setelah load
+});
+
+// Fix logo path saat DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', fixLogoPath);
+} else {
+  fixLogoPath();
+}
 
 // Drawer untuk mobile (pastikan elemen ada di HTML)
 const drawerButton = document.getElementById('drawer-button');
