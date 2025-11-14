@@ -26,13 +26,24 @@ function getBasePath() {
 
 // App Shell files - file utama yang di-cache untuk offline access
 function getAppShellFiles(basePath = '') {
-  return [
+  // Gunakan absolute URL untuk memastikan cache bekerja
+  const origin = self.location.origin;
+  const paths = [
     `${basePath}/index.html`,
     `${basePath}/`,
     `${basePath}/favicon.png`,
     `${basePath}/images/logo.png`,
     `${basePath}/manifest.json`,
+    // Juga cache dengan absolute URL
+    `${origin}${basePath}/index.html`,
+    `${origin}${basePath}/`,
+    `${origin}${basePath}/favicon.png`,
+    `${origin}${basePath}/images/logo.png`,
+    `${origin}${basePath}/manifest.json`,
   ];
+  
+  // Hapus duplikat
+  return [...new Set(paths)];
 }
 
 /* ------------------------- IndexedDB Helper untuk Outbox ------------------------- */
@@ -227,6 +238,9 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets (CSS, JS, images, fonts) - Cache First
   event.respondWith(handleStaticAssetRequest(request));
+  
+  // Pastikan semua request di-handle untuk offline mode
+  // (jika belum di-handle di atas, akan di-handle oleh handleStaticAssetRequest)
 });
 
 /**
@@ -272,6 +286,7 @@ async function handleApiRequest(request) {
  */
 async function handleNavigationRequest(request) {
   const basePath = getBasePath();
+  const origin = self.location.origin;
   
   try {
     // Coba network dulu
@@ -285,12 +300,17 @@ async function handleNavigationRequest(request) {
     return networkResponse;
   } catch (error) {
     // Network gagal, return cached App Shell
-    console.log('[SW] Offline - returning cached App Shell');
+    console.log('[SW] Offline - returning cached App Shell for:', request.url);
     
-    // Coba beberapa fallback paths
+    // Coba beberapa fallback paths (relative dan absolute)
     const fallbackPaths = [
+      request.url, // Original request URL
+      `${origin}${basePath}/index.html`,
+      `${origin}${basePath}/`,
       `${basePath}/index.html`,
       `${basePath}/`,
+      `${origin}/index.html`,
+      `${origin}/`,
       '/index.html',
       '/',
     ];
@@ -302,8 +322,16 @@ async function handleNavigationRequest(request) {
         return cached;
       }
     }
+    
+    // Coba match dengan request object langsung
+    const directMatch = await caches.match(request);
+    if (directMatch) {
+      console.log('[SW] Found cached response for request');
+      return directMatch;
+    }
 
     // Last resort - return basic offline page
+    console.log('[SW] No cache found, returning offline page');
     return new Response(
       '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Offline</title></head><body><h1>Aplikasi sedang offline</h1><p>Silakan cek koneksi internet Anda dan refresh halaman.</p></body></html>',
       {
