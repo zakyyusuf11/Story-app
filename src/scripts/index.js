@@ -10,13 +10,46 @@ function fixLogoPath() {
   const logoImg = document.getElementById('logo-img');
   if (logoImg) {
     const basePath = getBasePath();
+    // Set path logo berdasarkan base path
     if (basePath) {
       // Jika di GitHub Pages, gunakan path dengan base path
       logoImg.src = basePath + '/images/logo.png';
       console.log('✅ Logo path fixed to:', logoImg.src);
     } else {
-      // Fallback ke path relatif
+      // Untuk localhost atau root, gunakan path relatif
       logoImg.src = './images/logo.png';
+      console.log('✅ Logo path set to:', logoImg.src);
+    }
+    
+    // Pastikan logo ter-load dengan error handler
+    logoImg.onerror = function() {
+      console.warn('⚠️ Logo failed to load, trying fallback paths...');
+      // Coba beberapa fallback path
+      const fallbacks = [
+        './images/logo.png',
+        '/images/logo.png',
+        'images/logo.png',
+        basePath ? basePath + '/images/logo.png' : null
+      ].filter(Boolean);
+      
+      let currentIndex = 0;
+      const tryNext = () => {
+        if (currentIndex < fallbacks.length) {
+          this.src = fallbacks[currentIndex];
+          console.log('🔄 Trying logo path:', this.src);
+          currentIndex++;
+        } else {
+          console.error('❌ All logo paths failed');
+        }
+      };
+      
+      this.onerror = tryNext;
+      tryNext();
+    };
+    
+    // Force reload jika sudah ada src
+    if (logoImg.src) {
+      logoImg.src = logoImg.src;
     }
   }
 }
