@@ -15,19 +15,33 @@ function withTimeout(promise, ms = 8000) {
 
 // Fungsi untuk mendapatkan base path (untuk GitHub Pages)
 function getBasePath() {
-  // Jika di GitHub Pages, path akan seperti /repo-name/
+  // Jika di GitHub Pages, path akan seperti /repo-name/ atau /repo-name/index.html
   const path = window.location.pathname;
-  // Hapus trailing slash dan ambil base path
-  const pathParts = path.split('/').filter(p => p && p !== 'index.html' && p !== '');
-  // Jika ada base path (misal: /Story-app/), return itu
-  // Cek apakah ini GitHub Pages (bukan root domain)
-  if (pathParts.length > 0) {
-    const repoName = pathParts[0];
-    // Jika path mengandung repo name yang bukan hanya index.html
-    if (repoName && repoName !== 'index.html' && !repoName.includes('.')) {
-      return '/' + repoName;
+  const hostname = window.location.hostname;
+  
+  console.log('[BasePath] Detecting base path:', { path, hostname });
+  
+  // Jika hostname adalah github.io, berarti ini GitHub Pages
+  if (hostname.includes('github.io')) {
+    // Ambil path dan filter
+    const pathParts = path.split('/').filter(p => p && p !== 'index.html' && p !== '');
+    
+    console.log('[BasePath] Path parts:', pathParts);
+    
+    // Jika ada path parts (misal: /Story-app/), return base path
+    if (pathParts.length > 0) {
+      const repoName = pathParts[0];
+      // Pastikan bukan file extension
+      if (repoName && !repoName.includes('.')) {
+        const basePath = '/' + repoName;
+        console.log('[BasePath] Detected base path:', basePath);
+        return basePath;
+      }
     }
   }
+  
+  // Untuk localhost atau domain lain, return empty (root)
+  console.log('[BasePath] No base path detected, using root');
   return '';
 }
 

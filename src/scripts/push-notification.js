@@ -1,138 +1,408 @@
-// src/scripts/push-notification.js
+// Push Notification utility
 import CONFIG from './config.js';
 
 /**
- * Ambil VAPID public key dari API
- */
-async function getVapidPublicKey() {
-  // Coba endpoint relatif dulu (untuk dev proxy)
-  const relativeUrl = '/v1/vapidPublicKey';
-  const fallbackUrl = CONFIG && CONFIG.BASE_URL ? `${CONFIG.BASE_URL.replace(/\/$/, '')}/vapidPublicKey` : null;
-  
-  async function doFetch(url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch VAPID key: ${response.status}`);
-    }
-    const data = await response.json();
-    // API mungkin mengembalikan { publicKey: "..." } atau langsung string
-    return data.publicKey || data.public || data;
-  }
-  
-  try {
-    return await doFetch(relativeUrl);
-  } catch (error) {
-    console.warn('Fetching VAPID key from relative URL failed:', error);
-    if (fallbackUrl) {
-      try {
-        return await doFetch(fallbackUrl);
-      } catch (err2) {
-        console.error('Error fetching VAPID public key from fallback:', err2);
-        // Fallback ke hardcoded key jika API gagal (untuk development)
-        return 'BCCs2eonMI-6H2ctvFaWg-UYdDv387Vno_bzUzALpB442r2lCnsHmtrx8biyPi_E-1fSGABK_Qs_GlvPoJJqxbk';
-      }
-    }
-    // Fallback ke hardcoded key jika API gagal (untuk development)
-    return 'BCCs2eonMI-6H2ctvFaWg-UYdDv387Vno_bzUzALpB442r2lCnsHmtrx8biyPi_E-1fSGABK_Qs_GlvPoJJqxbk';
-  }
-}
-
-/**
- * Helper: convert url-base64 string ke Uint8Array untuk applicationServerKey
+ * Konversi VAPID public key dari base64url ke Uint8Array
+ * @param {string} base64String - VAPID key dalam format base64url
+ * @returns {Uint8Array} - Array bytes untuk applicationServerKey
  */
 function urlBase64ToUint8Array(base64String) {
+  // Tambahkan padding jika diperlukan
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  const outputArray = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; ++i) {
-    outputArray[i] = raw.charCodeAt(i);
+  // Konversi base64url ke base64 standar
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+  
+  // Decode base64 ke binary string
+  const rawData = window.atob(base64);
+  
+  // Konversi ke Uint8Array
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
   }
+  
   return outputArray;
 }
 
 /**
- * Kirim subscription ke server.
- * - mencoba endpoint relatif /v1/subscribe (untuk dev proxy)
- * - bila gagal dan CONFIG.BASE_URL ada, coba fallback ke `${CONFIG.BASE_URL}/subscribe`
+ * Ambil VAPID public key dari config (sesuai dokumentasi Story API)
+ * @returns {string} - VAPID public key
  */
-async function sendSubscriptionToServer(subscription) {
-  const relativeUrl = '/v1/subscribe';
-  // CONFIG.BASE_URL sudah mengandung /v1, jadi cukup tambahkan /subscribe
-  const fallbackUrl = CONFIG && CONFIG.BASE_URL ? `${CONFIG.BASE_URL.replace(/\/$/, '')}/subscribe` : null;
+function getVapidPublicKey() {
+  // VAPID key sudah tersedia di config, gunakan langsung
+  return CONFIG.VAPID_PUBLIC_KEY;
+}
 
-  console.log('[Push] Attempting to send subscription:');
-  console.log('[Push] - Relative URL:', relativeUrl);
-  console.log('[Push] - Fallback URL:', fallbackUrl);
-  console.log('[Push] - CONFIG.BASE_URL:', CONFIG?.BASE_URL);
-
-  async function doPost(url) {
-    console.log('[Push] POST to:', url);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(subscription),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Server responded ${res.status} ${res.statusText} ${text}`);
-    }
-    return res.json().catch(() => ({}));
+/**
+ * Verifikasi format dan validitas VAPID key
+ * @returns {boolean} - true jika valid, false jika tidak
+ */
+export function verifyVapidKey() {
+  const key = getVapidPublicKey();
+  
+  if (!key) {
+    console.error('❌ VAPID key tidak ditemukan di config');
+    return false;
   }
-
+  
+  // Cek panjang key (tidak boleh terlalu panjang, biasanya ~87 karakter)
+  if (key.length > 150) {
+    console.warn('⚠️ VAPID key terlalu panjang, kemungkinan masih placeholder');
+    console.warn('   Format VAPID key yang benar biasanya ~87 karakter (base64url)');
+    return false;
+  }
+  
+  // Cek format base64url (hanya alphanumeric, -, _)
+  const base64urlPattern = /^[A-Za-z0-9_-]+$/;
+  if (!base64urlPattern.test(key)) {
+    console.error('❌ Format VAPID key tidak valid (harus base64url: A-Z, a-z, 0-9, -, _)');
+    return false;
+  }
+  
+  // Coba konversi ke Uint8Array untuk verifikasi
   try {
-    return await doPost(relativeUrl);
-  } catch (err) {
-    console.warn(`[Push] Posting subscription to ${relativeUrl} failed:`, err);
-    if (fallbackUrl) {
-      try {
-        console.log('[Push] Trying fallback URL:', fallbackUrl);
-        return await doPost(fallbackUrl);
-      } catch (err2) {
-        console.error(`[Push] Posting subscription to fallback ${fallbackUrl} failed:`, err2);
-        throw err2;
-      }
+    const testArray = urlBase64ToUint8Array(key);
+    if (testArray.length === 0 || testArray.length !== 65) {
+      console.warn('⚠️ VAPID key length tidak sesuai (harus menghasilkan 65 bytes)');
+      return false;
     }
-    throw err;
+    console.log('✅ VAPID key format valid');
+    console.log(`   Key length: ${key.length} karakter`);
+    console.log(`   Converted to: ${testArray.length} bytes`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error converting VAPID key:', error.message);
+    console.error('   Pastikan key adalah format base64url yang valid');
+    return false;
   }
 }
 
 /**
- * Hapus subscription di server (panggil endpoint /v1/unsubscribe atau endpoint sesuai servermu)
- * Server harus menyediakan endpoint untuk menghapus subscription berdasarkan endpoint key.
+ * Subscribe ke push notifications
+ * @returns {Promise<PushSubscription|null>} - Subscription object atau null jika gagal
  */
-async function removeSubscriptionFromServer(subscription) {
-  const relativeUrl = '/v1/unsubscribe';
-  // CONFIG.BASE_URL sudah mengandung /v1, jadi cukup tambahkan /unsubscribe
-  const fallbackUrl = CONFIG && CONFIG.BASE_URL ? `${CONFIG.BASE_URL.replace(/\/$/, '')}/unsubscribe` : null;
-
-  async function doPost(url) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(subscription),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Server responded ${res.status} ${res.statusText} ${text}`);
-    }
-    return res.json().catch(() => ({}));
+export async function subscribeToPushNotifications() {
+  // Cek dukungan browser
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service Worker tidak didukung di browser ini. Gunakan browser modern seperti Chrome, Firefox, atau Edge.');
   }
-
+  
+  if (!('PushManager' in window)) {
+    throw new Error('Push Notification tidak didukung di browser ini. Gunakan browser modern seperti Chrome, Firefox, atau Edge.');
+  }
+  
+  // Cek apakah di HTTPS atau localhost
+  if (window.location.protocol !== 'https:' && 
+      window.location.hostname !== 'localhost' && 
+      window.location.hostname !== '127.0.0.1') {
+    throw new Error('Push Notification hanya bekerja di HTTPS atau localhost. Aplikasi harus di-deploy dengan HTTPS.');
+  }
+  
   try {
-    return await doPost(relativeUrl);
-  } catch (err) {
-    console.warn(`Unsubscribe post to ${relativeUrl} failed:`, err);
-    if (fallbackUrl) {
+    // Tunggu service worker siap (dengan timeout)
+    let registration = null;
+    const maxWaitTime = 10000; // 10 detik
+    const startTime = Date.now();
+    
+    while (!registration && (Date.now() - startTime) < maxWaitTime) {
       try {
-        return await doPost(fallbackUrl);
-      } catch (err2) {
-        console.error(`Unsubscribe post to fallback ${fallbackUrl} failed:`, err2);
-        throw err2;
+        registration = await navigator.serviceWorker.ready;
+        if (registration) break;
+      } catch (e) {
+        // Service worker belum ready, tunggu sebentar
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
-    throw err;
+    
+    if (!registration) {
+      throw new Error('Service Worker belum siap. Pastikan Service Worker sudah ter-register dengan benar. Refresh halaman dan coba lagi.');
+    }
+    
+    console.log('✅ Service Worker ready for push notification');
+    
+    // Cek apakah sudah subscribe
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('✅ Already subscribed to push notifications');
+      return existingSubscription;
+    }
+    
+    // Request izin notifikasi
+    console.log('🔔 Requesting notification permission...');
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'denied') {
+      throw new Error('Izin notifikasi ditolak. Untuk mengaktifkan notifikasi:\n1. Klik icon gembok/kunci di address bar\n2. Set "Notifications" ke "Allow"\n3. Refresh halaman dan coba lagi');
+    }
+    
+    if (permission === 'default') {
+      throw new Error('Izin notifikasi belum diberikan. Silakan berikan izin notifikasi ketika diminta, kemudian coba lagi.');
+    }
+    
+    if (permission !== 'granted') {
+      throw new Error('Izin notifikasi tidak diberikan. Status: ' + permission);
+    }
+    
+    console.log('✅ Notification permission granted');
+    
+    // Ambil VAPID public key dari config
+    const vapidPublicKey = getVapidPublicKey();
+    
+    if (!vapidPublicKey) {
+      throw new Error('VAPID public key tidak ditemukan di config');
+    }
+    
+    // Konversi VAPID key - biarkan browser validasi, jangan throw error di sini
+    let applicationServerKey;
+    try {
+      applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+      console.log('🔍 VAPID key conversion:', {
+        keyLength: vapidPublicKey.length,
+        convertedBytes: applicationServerKey.length,
+        expectedBytes: 65,
+        keyPreview: vapidPublicKey.substring(0, 30) + '...'
+      });
+      
+      if (applicationServerKey.length !== 65) {
+        console.warn('⚠️ VAPID key converted to', applicationServerKey.length, 'bytes, expected 65');
+        console.warn('   Continuing anyway - browser will validate');
+      } else {
+        console.log('✅ VAPID key format looks correct (65 bytes)');
+      }
+    } catch (keyError) {
+      console.error('❌ Error converting VAPID key:', keyError);
+      // Jangan throw di sini, biarkan browser coba subscribe dan lihat apa yang terjadi
+      console.warn('⚠️ Will attempt subscription anyway - browser will validate');
+      // Coba konversi lagi dengan error handling
+      try {
+        applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+      } catch (e) {
+        throw new Error('VAPID public key tidak dapat dikonversi. Pastikan format key benar (base64url). Error: ' + keyError.message);
+      }
+    }
+    
+    // Subscribe ke push dengan VAPID key
+    let subscription;
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey,
+      });
+      console.log('✅ Push subscription created in browser');
+    } catch (subscribeError) {
+      console.error('❌ Error subscribing to push:', subscribeError);
+      console.error('   Error name:', subscribeError.name);
+      console.error('   Error message:', subscribeError.message);
+      console.error('   VAPID key used:', vapidPublicKey.substring(0, 20) + '...');
+      
+      if (subscribeError.name === 'NotAllowedError') {
+        throw new Error('Push subscription tidak diizinkan. Pastikan Service Worker sudah aktif dan browser mendukung push notification.');
+      } else if (subscribeError.message && 
+                 (subscribeError.message.includes('VAPID') || 
+                  subscribeError.message.includes('Invalid') || 
+                  subscribeError.message.includes('invalid'))) {
+        console.error('⚠️ Browser rejected VAPID key. This usually means:');
+        console.error('   1. The VAPID key does not match the server\'s private key');
+        console.error('   2. The key format is incorrect');
+        console.error('   3. The key has been revoked or expired');
+        throw new Error('VAPID key tidak valid. Pastikan menggunakan VAPID key yang benar dari dokumentasi Story API. Error dari browser: ' + subscribeError.message);
+      }
+      throw new Error('Gagal subscribe ke push notification: ' + subscribeError.message);
+    }
+    
+    // Kirim subscription ke server menggunakan endpoint sesuai dokumentasi Story API
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    if (!token) {
+      console.warn('No auth token found');
+      return null;
+    }
+    
+    // Format subscription sesuai dokumentasi Story API
+    const subscriptionJson = subscription.toJSON();
+    
+    // Simpan subscription ke localStorage terlebih dahulu
+    localStorage.setItem('pushSubscription', JSON.stringify(subscriptionJson));
+    console.log('✅ Push subscription saved to localStorage');
+    
+    // Kirim ke endpoint /notifications/subscribe sesuai dokumentasi
+    try {
+      const response = await fetch(`${CONFIG.BASE_URL}/notifications/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          endpoint: subscriptionJson.endpoint,
+          keys: {
+            p256dh: subscriptionJson.keys.p256dh,
+            auth: subscriptionJson.keys.auth,
+          },
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        const errorMessage = errorData.message || `Server responded with status ${response.status}`;
+        console.warn('⚠️ Warning: Failed to send subscription to server:', errorMessage);
+        console.warn('   Push notification masih bisa digunakan untuk testing via DevTools');
+        // Jangan throw error, karena subscription sudah berhasil dibuat di browser
+        // User masih bisa test via DevTools > Application > Service Workers > Push
+      } else {
+        const result = await response.json();
+        console.log('✅ Push notification subscribed successfully to server:', result);
+      }
+    } catch (fetchError) {
+      console.warn('⚠️ Warning: Error sending subscription to server:', fetchError.message);
+      console.warn('   Push notification masih bisa digunakan untuk testing via DevTools');
+      console.warn('   Buka DevTools > Application > Service Workers > Push untuk test manual');
+      // Jangan throw error, karena subscription sudah berhasil dibuat di browser
+    }
+    
+    console.log('✅ Push notification subscription ready');
+    return subscription;
+    
+  } catch (error) {
+    console.error('❌ Error subscribing to push notifications:', error);
+    // Re-throw error dengan message yang lebih jelas
+    if (error.message) {
+      throw error;
+    }
+    throw new Error('Gagal mengaktifkan push notification: ' + (error.toString() || 'Unknown error'));
   }
+}
+
+/**
+ * Unsubscribe dari push notifications
+ * @returns {Promise<void>}
+ */
+export async function unsubscribeFromPushNotifications() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    
+    if (subscription) {
+      const subscriptionJson = subscription.toJSON();
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+      
+      // Unsubscribe dari server menggunakan endpoint DELETE sesuai dokumentasi
+      if (token && subscriptionJson.endpoint) {
+        try {
+          const response = await fetch(`${CONFIG.BASE_URL}/notifications/subscribe`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              endpoint: subscriptionJson.endpoint,
+            }),
+          });
+          
+          if (!response.ok) {
+            console.warn('Failed to unsubscribe from server, but continuing with local unsubscribe');
+          } else {
+            const result = await response.json();
+            console.log('✅ Unsubscribed from server:', result);
+          }
+        } catch (fetchError) {
+          console.warn('Could not send unsubscribe to server:', fetchError.message);
+        }
+      }
+      
+      // Unsubscribe dari browser
+      await subscription.unsubscribe();
+      localStorage.removeItem('pushSubscription');
+      console.log('✅ Push notification unsubscribed successfully');
+    }
+  } catch (error) {
+    console.error('Error unsubscribing from push notifications:', error);
+    throw error;
+  }
+}
+
+/**
+ * Cek apakah user sudah subscribe
+ * @returns {Promise<boolean>} - true jika sudah subscribe, false jika belum
+ */
+export async function isSubscribedToPushNotifications() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    return subscription !== null;
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    return false;
+  }
+}
+
+/**
+ * Test notification secara manual (untuk debugging)
+ * @returns {Promise<void>}
+ */
+export async function testNotification() {
+  if (!('serviceWorker' in navigator)) {
+    console.error('❌ Service Worker tidak didukung');
+    return;
+  }
+  
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Cek izin notifikasi
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.error('❌ Notification permission tidak diberikan');
+        return;
+      }
+    }
+    
+    // Ambil base path untuk icon (sama seperti service worker)
+    const getBasePath = () => {
+      const pathname = window.location.pathname;
+      if (pathname === '/' || pathname === '/index.html') {
+        return '/';
+      }
+      const lastSlash = pathname.lastIndexOf('/');
+      return lastSlash > 0 ? pathname.substring(0, lastSlash + 1) : '/';
+    };
+    
+    const basePath = getBasePath();
+    
+    // Tampilkan test notification
+    await registration.showNotification('Notifikasi Baru', {
+      body: 'Ada data baru ditambahkan.',
+      icon: basePath + 'images/logo.png',
+      badge: basePath + 'images/logo.png',
+      tag: 'test-notification',
+      requireInteraction: false,
+    });
+    
+    console.log('✅ Test notification sent!');
+  } catch (error) {
+    console.error('❌ Error showing test notification:', error);
+  }
+}
+
+/**
+ * Helper: Get base path for GitHub Pages
+ */
+function getBasePath() {
+  const hostname = window.location.hostname;
+  if (hostname.includes('github.io')) {
+    const path = window.location.pathname;
+    const pathParts = path.split('/').filter(p => p && p !== 'index.html' && p !== '');
+    if (pathParts.length > 0) {
+      const repoName = pathParts[0];
+      if (repoName && !repoName.includes('.')) {
+        return '/' + repoName;
+      }
+    }
+  }
+  return '';
 }
 
 /**
@@ -165,8 +435,8 @@ function createPushButton() {
 }
 
 /**
- * Inisialisasi fitur push notification.
- * registration: ServiceWorkerRegistration instance (boleh dikirim atau akan pakai navigator.serviceWorker.ready)
+ * Inisialisasi fitur push notification dengan tombol UI
+ * @param {ServiceWorkerRegistration} registration - Service worker registration
  */
 export async function initPush(registration) {
   // Buat tombol dulu, selalu muncul
@@ -179,7 +449,7 @@ export async function initPush(registration) {
     toggle.disabled = true;
     return;
   }
-
+  
   try {
     // Jika registration tidak diberikan, tunggu service worker siap
     if (!registration) {
@@ -200,8 +470,8 @@ export async function initPush(registration) {
     setTimeout(() => initPush(null), 3000);
     return;
   }
-
-  // update UI (tulisan tombol)
+  
+  // Update UI (tulisan tombol)
   async function updateUI() {
     try {
       const sub = await registration.pushManager.getSubscription();
@@ -218,26 +488,27 @@ export async function initPush(registration) {
       toggle.style.backgroundColor = '#2196F3';
     }
   }
-
+  
   await updateUI();
-
+  
   // Hapus event listener lama jika ada, lalu tambahkan yang baru
   const newToggle = toggle.cloneNode(true);
   toggle.parentNode.replaceChild(newToggle, toggle);
   const finalToggle = document.getElementById('push-toggle');
-
+  
   finalToggle.addEventListener('click', async () => {
     try {
       console.log('🔔 Push notification button clicked');
       
-      // jika sudah granted — toggle unsubscribe atau test notification
+      // Jika sudah granted — toggle unsubscribe atau test notification
       if (Notification.permission === 'granted') {
         const currentSub = await registration.pushManager.getSubscription();
         if (currentSub) {
           // Tampilkan test notification dulu sebelum unsubscribe
           console.log('🔔 Menampilkan test notification...');
           try {
-            const iconPath = window.location.origin + '/images/logo.png';
+            const basePath = getBasePath();
+            const iconPath = window.location.origin + basePath + '/images/logo.png';
             console.log('Icon path:', iconPath);
             
             const notificationOptions = {
@@ -250,8 +521,8 @@ export async function initPush(registration) {
             };
             
             console.log('Notification options:', notificationOptions);
-            const notification = await registration.showNotification('Test Notification', notificationOptions);
-            console.log('✅ Test notification ditampilkan:', notification);
+            await registration.showNotification('Test Notification', notificationOptions);
+            console.log('✅ Test notification ditampilkan');
             
             // Tampilkan alert juga untuk memastikan user melihat feedback
             setTimeout(() => {
@@ -274,19 +545,7 @@ export async function initPush(registration) {
           // Function untuk handle unsubscribe
           async function handleUnsubscribe(sub) {
             try {
-              // coba unsubscribe lokal
-              const unsubscribed = await sub.unsubscribe();
-              console.log('✅ Unsubscribed locally:', unsubscribed);
-
-              // inform server untuk hapus subscription
-              try {
-                await removeSubscriptionFromServer({ endpoint: sub.endpoint, keys: sub.toJSON().keys });
-                console.log('✅ Subscription dihapus dari server');
-              } catch (errUnsub) {
-                // server unsubscription boleh gagal, tapi tetap lanjut
-                console.warn('⚠️ Failed to remove subscription from server', errUnsub);
-              }
-              
+              await unsubscribeFromPushNotifications();
               alert('✅ Notifikasi telah dinonaktifkan.');
               await updateUI();
             } catch (err) {
@@ -303,8 +562,8 @@ export async function initPush(registration) {
           console.log('Permission granted, subscribing...');
         }
       }
-
-      // request permission
+      
+      // Request permission
       console.log('Requesting notification permission...');
       const perm = await Notification.requestPermission();
       console.log('Notification permission:', perm);
@@ -314,11 +573,12 @@ export async function initPush(registration) {
         await updateUI();
         return;
       }
-
+      
       // Tampilkan test notification setelah permission granted
       console.log('🔔 Menampilkan test notification setelah permission granted...');
       try {
-        const iconPath = window.location.origin + '/images/logo.png';
+        const basePath = getBasePath();
+        const iconPath = window.location.origin + basePath + '/images/logo.png';
         console.log('Icon path:', iconPath);
         
         const notificationOptions = {
@@ -330,46 +590,26 @@ export async function initPush(registration) {
         };
         
         console.log('Notification options:', notificationOptions);
-        const notification = await registration.showNotification('Notifikasi Diaktifkan!', notificationOptions);
-        console.log('✅ Test notification ditampilkan setelah permission granted:', notification);
+        await registration.showNotification('Notifikasi Diaktifkan!', notificationOptions);
+        console.log('✅ Test notification ditampilkan setelah permission granted');
       } catch (notifErr) {
         console.error('❌ Gagal menampilkan test notification:', notifErr);
         // Jangan block flow, tetap lanjutkan
       }
-
-      // Ambil VAPID public key dari API
+      
+      // Subscribe menggunakan fungsi subscribeToPushNotifications
       finalToggle.textContent = '⏳ Memproses...';
       finalToggle.disabled = true;
       
-      console.log('Fetching VAPID public key...');
-      const vapidPublicKey = await getVapidPublicKey();
-      if (!vapidPublicKey) {
-        alert('Gagal mendapatkan VAPID public key dari server.');
-        finalToggle.disabled = false;
-        await updateUI();
-        return;
-      }
-      console.log('✅ VAPID public key received');
-
-      // subscribe via PushManager
-      console.log('Subscribing to push notifications...');
-      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey,
-      });
-
-      console.log('✅ Push subscription berhasil:', subscription);
-
-      // kirim subscription ke server
       try {
-        await sendSubscriptionToServer(subscription);
-        console.log('✅ Push notification subscription berhasil disimpan ke server!');
+        await subscribeToPushNotifications();
+        console.log('✅ Push notification subscription berhasil!');
         
         // Tampilkan notifikasi sukses
         console.log('🔔 Menampilkan notifikasi sukses...');
         try {
-          const iconPath = window.location.origin + '/images/logo.png';
+          const basePath = getBasePath();
+          const iconPath = window.location.origin + basePath + '/images/logo.png';
           const notificationOptions = {
             body: 'Anda akan menerima notifikasi dari Story App.',
             icon: iconPath,
@@ -386,43 +626,10 @@ export async function initPush(registration) {
         
         alert('✅ Notifikasi berhasil diaktifkan! Anda akan menerima notifikasi dari server.');
       } catch (err) {
-        console.error('❌ Failed to send subscription to server:', err);
-        console.log('ℹ️ Ini normal untuk development. Subscription lokal sudah berhasil dibuat.');
-        
-        // Tampilkan notifikasi sukses (meskipun server gagal, subscription lokal berhasil)
-        console.log('🔔 Menampilkan success notification...');
-        try {
-          const iconPath = window.location.origin + '/images/logo.png';
-          const notificationOptions = {
-            body: 'Notifikasi berhasil diaktifkan! Anda dapat menerima notifikasi.',
-            icon: iconPath,
-            badge: iconPath,
-            tag: 'subscription-success-local-' + Date.now(),
-            vibrate: [200, 100, 200],
-          };
-          console.log('Success notification options:', notificationOptions);
-          await registration.showNotification('Notifikasi Berhasil Diaktifkan!', notificationOptions);
-          console.log('✅ Success notification ditampilkan');
-        } catch (notifErr) {
-          console.error('❌ Gagal menampilkan success notification:', notifErr);
-        }
-        
-        // Pesan yang lebih informatif
-        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (isDevelopment) {
-          alert('✅ Notifikasi berhasil diaktifkan!\n\n' +
-                'Subscription lokal berhasil dibuat. Untuk testing, Anda dapat:\n' +
-                '1. Menggunakan DevTools untuk mengirim test notification\n' +
-                '2. Atau gunakan "npm run start-dev" untuk development dengan proxy\n\n' +
-                'Notifikasi akan berfungsi dengan baik di production.');
-        } else {
-          alert('✅ Notifikasi berhasil diaktifkan!\n\n' +
-                'Subscription lokal berhasil dibuat. ' +
-                'Jika ada masalah koneksi ke server, notifikasi tetap akan berfungsi secara lokal.');
-        }
-        // Tetap lanjutkan karena subscription lokal sudah berhasil
+        console.error('❌ Failed to subscribe:', err);
+        alert('Terjadi kesalahan saat menyiapkan notifikasi: ' + err.message + '\n\nLihat console untuk detail.');
       }
-
+      
       finalToggle.disabled = false;
       await updateUI();
     } catch (err) {
@@ -432,6 +639,32 @@ export async function initPush(registration) {
       await updateUI();
     }
   });
+}
+
+/**
+ * Inisialisasi push notification saat app load
+ */
+export async function initializePushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return;
+  }
+  
+  // Verifikasi VAPID key saat inisialisasi
+  verifyVapidKey();
+  
+  // Cek apakah sudah subscribe
+  const isSubscribed = await isSubscribedToPushNotifications();
+  if (!isSubscribed) {
+    // Auto-subscribe saat login (akan dipanggil setelah user login)
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    if (token) {
+      try {
+        await subscribeToPushNotifications();
+      } catch (err) {
+        console.warn('Auto-subscribe failed:', err);
+      }
+    }
+  }
 }
 
 // Inisialisasi tombol push notification saat DOM ready
