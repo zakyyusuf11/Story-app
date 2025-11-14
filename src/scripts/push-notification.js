@@ -408,7 +408,7 @@ function getBasePath() {
 /**
  * Buat tombol push notification yang selalu muncul
  */
-function createPushButton() {
+export function createPushButton() {
   let toggle = document.getElementById('push-toggle');
   if (!toggle) {
     toggle = document.createElement('button');
@@ -428,8 +428,35 @@ function createPushButton() {
     toggle.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
     toggle.style.fontSize = '14px';
     toggle.style.fontWeight = '600';
+    toggle.style.display = 'block';
+    toggle.style.visibility = 'visible';
+    toggle.textContent = '🔔 Aktifkan Notifikasi';
     toggle.setAttribute('aria-label', 'Toggle Push Notifications');
-    document.body.appendChild(toggle);
+    
+    // Pastikan body sudah ada sebelum append
+    if (document.body) {
+      document.body.appendChild(toggle);
+      console.log('✅ Push notification button created');
+    } else {
+      // Tunggu body ready
+      const observer = new MutationObserver((mutations, obs) => {
+        if (document.body) {
+          document.body.appendChild(toggle);
+          console.log('✅ Push notification button created (after body ready)');
+          obs.disconnect();
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      
+      // Fallback timeout
+      setTimeout(() => {
+        if (document.body && !document.getElementById('push-toggle')) {
+          document.body.appendChild(toggle);
+          console.log('✅ Push notification button created (timeout fallback)');
+        }
+        observer.disconnect();
+      }, 1000);
+    }
   }
   return toggle;
 }
@@ -689,15 +716,33 @@ function initPushButton() {
   }
 }
 
-// Panggil saat module di-load
-initPushButton();
-
-// Juga panggil saat window load untuk memastikan
-if (typeof window !== 'undefined') {
+// Panggil segera saat module di-load
+if (typeof document !== 'undefined') {
+  // Coba buat tombol segera
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(() => initPushButton(), 0);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      initPushButton();
+    });
+  }
+  
+  // Juga panggil saat window load untuk memastikan
   window.addEventListener('load', () => {
     // Pastikan tombol ada
     if (!document.getElementById('push-toggle')) {
+      console.log('⚠️ Push button not found on load, creating now...');
       createPushButton();
+    } else {
+      console.log('✅ Push button already exists');
     }
   });
+  
+  // Fallback: coba lagi setelah 2 detik
+  setTimeout(() => {
+    if (!document.getElementById('push-toggle')) {
+      console.log('⚠️ Push button still not found after 2s, creating now...');
+      createPushButton();
+    }
+  }, 2000);
 }

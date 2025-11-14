@@ -59,9 +59,18 @@ if ('serviceWorker' in navigator) {
       console.log('ServiceWorker registered:', reg);
 
       // Init push notification (tombol akan muncul terus)
+      // Load module push notification
       import('./push-notification.js')
         .then((module) => {
           console.log('✅ Push notification module loaded');
+          // Pastikan tombol sudah dibuat
+          if (!document.getElementById('push-toggle')) {
+            console.log('⚠️ Push button not found, creating...');
+            if (module && typeof module.createPushButton === 'function') {
+              module.createPushButton();
+            }
+          }
+          
           if (module && typeof module.initPush === 'function') {
             try { 
               module.initPush(reg);
@@ -85,6 +94,33 @@ if ('serviceWorker' in navigator) {
             console.error('❌ Failed to load push notification module:', e);
           });
         });
+      
+      // Pastikan tombol dibuat bahkan jika module belum load
+      setTimeout(() => {
+        if (!document.getElementById('push-toggle')) {
+          console.log('⚠️ Push button still missing, creating fallback button...');
+          const btn = document.createElement('button');
+          btn.id = 'push-toggle';
+          btn.textContent = '🔔 Aktifkan Notifikasi';
+          btn.style.position = 'fixed';
+          btn.style.right = '16px';
+          btn.style.bottom = '16px';
+          btn.style.zIndex = '9999';
+          btn.style.padding = '12px 20px';
+          btn.style.backgroundColor = '#2196F3';
+          btn.style.color = 'white';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '8px';
+          btn.style.cursor = 'pointer';
+          btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+          btn.style.fontSize = '14px';
+          btn.style.fontWeight = '600';
+          if (document.body) {
+            document.body.appendChild(btn);
+            console.log('✅ Fallback push button created');
+          }
+        }
+      }, 1000);
 
       // Don't aggressively unregister other registrations here.
       // If you still want to clean stray registrations, do it manually from DevTools
