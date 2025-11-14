@@ -5,11 +5,21 @@ import UrlParser from './routes/url-parser.js';
 import { getOutboxAll, clearOutbox } from './data/idb.js'; // pastikan file ini ada
 import { postStory } from './data/api.js'; // fungsi untuk POST story ke API (sesuaikan)
 
-// Fix logo path untuk GitHub Pages
+// Fix logo path dan manifest untuk GitHub Pages
 function fixLogoPath() {
   const logoImg = document.getElementById('logo-img');
+  const basePath = getBasePath();
+  
+  // Fix manifest link jika ada base path
+  if (basePath) {
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    if (manifestLink) {
+      manifestLink.href = basePath + '/manifest.json';
+      console.log('✅ Manifest path fixed to:', manifestLink.href);
+    }
+  }
+  
   if (logoImg) {
-    const basePath = getBasePath();
     // Set path logo berdasarkan base path
     if (basePath) {
       // Jika di GitHub Pages, gunakan path dengan base path
@@ -101,10 +111,11 @@ if ('serviceWorker' in navigator) {
       // Dapatkan base path untuk GitHub Pages
       const basePath = getBasePath();
       const swPath = basePath ? `${basePath}/sw.js` : '/sw.js';
-      console.log('Registering service worker at:', swPath, '(basePath:', basePath, ')');
+      const swScope = basePath ? `${basePath}/` : '/';
+      console.log('Registering service worker at:', swPath, 'with scope:', swScope, '(basePath:', basePath, ')');
       
-      // Daftarkan SW dengan base path yang benar, tapi batasi waktu tunggu
-      const reg = await withTimeout(navigator.serviceWorker.register(swPath), 7000);
+      // Daftarkan SW dengan base path dan scope yang benar, tapi batasi waktu tunggu
+      const reg = await withTimeout(navigator.serviceWorker.register(swPath, { scope: swScope }), 7000);
       console.log('ServiceWorker registered:', reg);
 
       // Init push notification (tombol akan muncul terus)

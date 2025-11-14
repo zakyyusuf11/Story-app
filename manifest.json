@@ -3,6 +3,7 @@
   "short_name": "StoryApp",
   "description": "Aplikasi untuk berbagi cerita dengan dukungan peta dan offline mode",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#ffffff",
